@@ -88,20 +88,12 @@ app.post(
             ffmpeg(bufferStream)
               .on('end', () => resolve(Buffer.concat(chunks)))
               .on('error', reject)
-              .on('data', (chunk) => chunks.push(chunk))
-              .ffprobe((err, metadata) => {
-                if (err) return reject(err);
-                const { width, height } = metadata.streams[0];
-                ffmpeg(bufferStream)
-                  .screenshots({
-                    count: 1,
-                    timemarks: ['1'],
-                    size: `${width}x${height}`,
-                  })
-                  .on('end', () => resolve(Buffer.concat(chunks)))
-                  .on('error', reject)
-                  .on('data', (chunk) => chunks.push(chunk));
-              });
+              .screenshots({
+                count: 1,
+                timemarks: ['1'],
+                size: '270x480',
+              })
+              .on('data', (chunk) => chunks.push(chunk));
           });
 
           const thumbName = fileName.replace(/\.[^/.]+$/, '') + '-thumb.jpg';
