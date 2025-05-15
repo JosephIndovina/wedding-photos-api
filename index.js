@@ -4,10 +4,6 @@ const multer = require('multer');
 const dotenv = require('dotenv').config();
 const cors = require('cors');
 const crypto = require('crypto');
-const ffmpeg = require('fluent-ffmpeg');
-const ffmpegPath = require('ffmpeg-static');
-const stream = require('stream');
-ffmpeg.setFfmpegPath(ffmpegPath);
 
 const BUCKET_NAME = process.env.AWS_BUCKET_NAME;
 const API_KEY = process.env.API_KEY;
@@ -64,51 +60,22 @@ app.post(
       return res.status(400).json({ message: 'No files uploaded.' });
     }
     try {
-      const uploadPromises = req.files.map(async (file) => {
+      const uploadPromises = req.files.map((file) => {
         const fileName = `${crypto.randomBytes(16).toString('hex')}-${
           file.originalname
         }`;
+
         const params = {
           Bucket: BUCKET_NAME,
           Key: fileName,
           Body: file.buffer,
           ContentType: file.mimetype,
         };
-        const uploadResult = await s3.upload(params).promise();
-
-        // Check if file is a video and generate thumbnail
-        if (['video/mp4', 'video/quicktime'].includes(file.mimetype)) {
-          // Create a readable stream from the buffer
-          const bufferStream = new stream.PassThrough();
-          bufferStream.end(file.buffer);
-
-          // Generate thumbnail as a buffer
-          const thumbName = fileName.replace(/\.[^/.]+$/, '') + '-thumb.jpg';
-          const thumbBuffer = await new Promise((resolve, reject) => {
-            const chunks = [];
-            ffmpeg(bufferStream)
-              .screenshots({
-                timestamps: [1],
-                filename: thumbName,
-              })
-              .on('end', () => resolve(Buffer.concat(chunks)))
-              .on('error', reject);
-          });
-
-          await s3
-            .upload({
-              Bucket: BUCKET_NAME,
-              Key: thumbName,
-              Body: thumbBuffer,
-              ContentType: 'image/jpeg',
-            })
-            .promise();
-        }
-
-        return uploadResult.Location;
+        return s3.upload(params).promise();
       });
 
-      const urls = await Promise.all(uploadPromises);
+      const results = await Promise.all(uploadPromises);
+      const urls = results.map((result) => result.Location);
       res.json(urls);
     } catch (error) {
       console.error(error);
