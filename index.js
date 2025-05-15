@@ -83,20 +83,18 @@ app.post(
           bufferStream.end(file.buffer);
 
           // Generate thumbnail as a buffer
+          const thumbName = fileName.replace(/\.[^/.]+$/, '') + '-thumb.jpg';
           const thumbBuffer = await new Promise((resolve, reject) => {
             const chunks = [];
             ffmpeg(bufferStream)
-              .on('end', () => resolve(Buffer.concat(chunks)))
-              .on('error', reject)
               .screenshots({
-                count: 1,
-                timemarks: ['1'],
-                size: '270x480',
+                timestamps: [1],
+                filename: thumbName,
               })
-              .on('data', (chunk) => chunks.push(chunk));
+              .on('end', () => resolve(Buffer.concat(chunks)))
+              .on('error', reject);
           });
 
-          const thumbName = fileName.replace(/\.[^/.]+$/, '') + '-thumb.jpg';
           await s3
             .upload({
               Bucket: BUCKET_NAME,
